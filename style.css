@@ -1,0 +1,86 @@
+* {
+    --cpicker-edge: 36px;
+    --cpicker-size: 300px;
+}
+
+html {
+    background: #808080;
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+colourpanel {
+    display: grid;
+    grid-template-columns: var(--cpicker-edge) var(--cpicker-size) var(--cpicker-edge);
+    grid-template-rows: var(--cpicker-edge) var(--cpicker-size) var(--cpicker-edge);
+    width: calc(2 * var(--cpicker-edge) + var(--cpicker-size));
+    height: calc(2 * var(--cpicker-edge) + var(--cpicker-size));
+}
+
+rightpanel {
+    display: grid;
+    height: var(--cpicker-size);
+    grid-template-rows: auto auto;
+    padding: var(--cpicker-edge) 0;
+}
+
+sliderpanel {
+    display: block;
+}
+
+selectedcol {
+    display: block;
+}
+
+.cpicker_input {
+    width: var(--cpicker-edge);
+    height: var(--cpicker-edge);
+    border: none;
+}
+
+.cpicker_label {
+    padding: 0 0.5em;
+    line-height: var(--cpicker-edge);
+}
+
+#sliders {
+    display: grid;
+    grid-template-rows: auto auto auto auto;
+}
+
+#gradview {
+    border: none !important; /* the border messes with the pointer event coord */
+}
+
+apppanel {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-column-gap: 1em;
+    width: fit-content;
+}
+
+docpanel, pagetitle {
+    display: block;
+}
+
+pagetitle {
+    padding: 1em calc(var(--cpicker-edge) * 1.5);
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+docpanel {
+    padding: 1em calc(var(--cpicker-edge) * 0.7);
+    margin: 4em calc(var(--cpicker-edge) * 0.3);
+    background: #eee;
+    border: 1px solid #334;
+    border-radius: 0.5em;
+    box-shadow: 0px 6px 24px rgba(0,0,0,0.5);
+}
+
+footer {
+    padding: 0 1em 0 1em;
+    font-size: 0.9rem;
+    text-align: center;
+}

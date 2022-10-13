@@ -1,0 +1,217 @@
+<meta charset = "UTF-8" />
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="hsluv.js"></script>
+    <script src="script.js"></script>
+</head>
+<title>Lazy Artist’s Colour Picker</title>
+<body onload="onpageload()">
+    <pagetitle>
+        <span>Lazy Artist’s Colour Picker</span>
+    </pagetitle>
+    <apppanel>
+    <colourpanel>
+        <!-- #1 --><div></div>
+        <!-- #2 --><div>
+            <form class="cpicker_label" style="text-align:right">
+                <label for="ambient_picker">Ambient Colour</label>
+            </form>
+        </div>
+        <!-- #3 --><div>
+            <form>
+                <input type="color" id="ambient_picker" name="ambient_picker" class="cpicker_input" />
+            </form>
+        </div>
+
+        <!-- #4 --><div></div>
+        <!-- #5 --><div>
+            <canvas id="gradview" width="300" height="300"></canvas>
+        </div>
+        <!-- #6 --><div></div>
+
+        <!-- #7 --><div>
+            <form>
+                <input type="color" id="eigen_picker" name="eigen_picker" class="cpicker_input" />
+            </form>
+        </div>
+        <!-- #8 --><div>
+            <form class="cpicker_label">
+                <label for="eigen_picker">Eigencolour</label>
+            </form>
+        </div>
+        <!-- #9 --><div></div>
+
+    </colourpanel>
+    <rightpanel>
+        <sliderpanel>
+            <form id="sliders">
+                <label for="select_colourmodel">RGB Model</label>
+                <select name="select_colourmodel" id="select_colourmodel">
+                    <option value="sRGB">sRGB (select this)</option>
+                    <option value="AppleP3">Display P3 (Apple devices)</option>
+                    <option value="AdobeRGB">Adobe RGB</option>
+                </select>
+                <label for="slider_variance">Variance</label>
+                <input type="range" id="slider_variance" name="slider_variance" min="-1000" max="1000" step="1" />
+                <label for="slider_ambmix">Ambient Mix</label>
+                <input type="range" id="slider_ambmix" name="slider_ambmix" min="0" max="1000" step="1" />
+            </form>
+        </sliderpanel>
+        <selectedcol>
+            <div><h4>Selected Colour</h4></div>
+            <div style="height:36px">
+                <div id="outcol_swatch" style="display:inline-block;background-color:#FAFAFA;width:36px;height:36px"></div>
+                <span id="outcol_text" style="padding:0;margin:0">#FAFAFA</span>
+            </div>
+        </selectedcol>
+    </rightpanel>
+    </apppanel>
+    <docpanel id="docpanel"></docpanel>
+    <footer>
+        <p>Copyright © 2022 CuriousTorvald</p>
+        <p>Fork me on Github!</p>
+    </footer></body>
+<script>
+"use strict";
+
+let cx = 0 // colour selector square x
+let cy = 299 // colour selector square x
+let variance = 1.0
+let ambmix = 1.0
+let rgbModel = "sRGB"
+let eigencol = [0.0,0.0,0.0]
+let ambcol = [0.0,0.0,0.0]
+let outcol = [0,0,0]
+let _calculatedEigen = new Hsluv(0,0,0)
+
+const setOutputSwatch = (style, outOfGamut) => {
+    document.getElementById("outcol_swatch").style["background-color"] = style
+}
+const setOutputCcode = (text, outOfGamut) => {
+    document.getElementById("outcol_text").innerText = text
+    document.getElementById("outcol_text").style["color"] = (outOfGamut) ? "#ff030b" : "unset"
+}
+
+class RGBModel {
+    constructor(fromFun, toFun) {
+        this.fromXYZ = fromFun // params: x,y,z (0-1); return: [r,g,b]  (0-1)
+        this.toXYZ = toFun // params: r,g,b (0-1); return: [x,y,z]  (0-1)
+    }
+}
+
+const rgbModels = Object.freeze({
+    sRGB: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                 3.240970*x - 1.537383*y - 0.498611*z,
+                -0.969244*x + 1.875968*y + 0.041555*z,
+                 0.055630*x - 0.203977*y + 1.056972*z
+            ].map(it=>(it <= 0.0031308) ? (12.92 * it) : (1.055 * Math.pow(it, 1.0 / 2.4) - 0.055))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it <= 0.04045) ? it / 12.92 : Math.pow((it + 0.055) / 1.055, 2.4))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                0.412391*lr + 0.357584*lg + 0.180481*lb,
+                0.212639*lr + 0.715169*lg + 0.072192*lb,
+                0.019331*lr + 0.119195*lg + 0.950532*lb
+            ]
+        }
+    ),
+    AppleP3: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                 2.493497*x - 0.931384*y - 0.402711*z,
+                -0.829489*x + 1.762664*y + 0.023625*z,
+                 0.035846*x - 0.076172*y + 0.956885*z
+            ].map(it=>(it <= 0.0031308) ? (12.92 * it) : (1.055 * Math.pow(it, 1.0 / 2.4) - 0.055))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it <= 0.04045) ? it / 12.92 : Math.pow((it + 0.055) / 1.055, 2.4))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                0.486571*lr + 0.265668*lg + 0.198217*lb,
+                0.228975*lr + 0.691739*lg + 0.079287*lb,
+                0.000000*lr + 0.045113*lg + 1.043944*lb
+            ]
+        }
+    )
+})
+
+function rgbStrToTriad(s) {
+    let r = Number("0x"+s.substring(1,3)) / 255.0
+    let g = Number("0x"+s.substring(3,5)) / 255.0
+    let b = Number("0x"+s.substring(5,7)) / 255.0
+    return [r,g,b]
+}
+
+Number.prototype.coerceIn = function(low, high) {
+    return (this < low) ? low : (this > high) ? high : this
+}
+
+function rgbTriadToStr(rgb) {
+    let [rs, gs, bs] = rgb.map(it => (Math.round(it.coerceIn(0.0, 1.0)*255.0)|0).toString(16).padStart(2,'0') )
+    return `#${rs}${gs}${bs}`
+}
+
+function onpageload() {
+    variance = document.getElementById("slider_variance").value / 1000.0
+    ambmix = document.getElementById("slider_ambmix").value / 1000.0
+    rgbModel = document.getElementById("select_colourmodel").value
+    eigencol = rgbStrToTriad(document.getElementById("eigen_picker").value)
+    ambcol = rgbStrToTriad(document.getElementById("ambient_picker").value)
+
+    updatePicker()
+    updateGradview()
+    drawGradCursor()
+}
+
+function loadArticle(filePath, callback) {
+    let xobj = new XMLHttpRequest()
+        xobj.overrideMimeType("application/html")
+    xobj.open('GET', filePath, true)
+    xobj.onreadystatechange = function () {
+          if (xobj.readyState == 4) {
+            // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+            callback((xobj.status == "200") ? xobj.responseText : null)
+          }
+    }
+    xobj.send(null)
+}
+
+loadArticle("doc.html", (html) => {
+    document.getElementById("docpanel").innerHTML = html
+})
+
+document.getElementById("slider_variance").oninput = (event) => { variance = event.target.value / 1000.0; updatePicker(); updateGradview() }
+document.getElementById("slider_ambmix").oninput = (event) => { ambmix = event.target.value / 1000.0; updatePicker(); updateGradview() }
+document.getElementById("select_colourmodel").oninput = (event) => { rgbModel = event.target.value; updatePicker(); updateGradview() }
+document.getElementById("eigen_picker").oninput = (event) => { eigencol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
+document.getElementById("ambient_picker").oninput = (event) => { ambcol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
+
+let ctx = document.getElementById("gradview").getContext("2d");
+
+const updater = (event) => {
+    if (event.buttons) {
+        const rect = event.target.getBoundingClientRect()
+        const [mx, my] = [event.clientX - rect.x, event.clientY - rect.y]
+        cx = mx;cy = my;
+        updatePicker()
+        drawGradCursor()
+    }
+}
+
+console.log(document.getElementById("gradview"))
+document.getElementById("gradview").onpointermove = updater
+document.getElementById("gradview").onpointerdown = updater
+
+ctx.fillRect(0,0,300,300);
+
+</script>
+</html>
