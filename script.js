@@ -196,18 +196,20 @@ function updatePicker() {
     // console.log("let eigen =", eigen)
 
     _calculatedEigen = eigen.cpy()
-    let luma = eigen.l * (cy / 299.0)
+    let lumaScale = 1.0 - (cy / 299.0)
+    let luma = eigen.l * lumaScale
     let newEigen = new Hsluv(eigen.h, eigen.s, luma)
 
     // console.log("newEigen", newEigen)
 
     let t = transformAmbMix(cx / 299.0) * getCompanededAmbmix()
-    let outCol = lerpWithAmbLuv(selectedRgbModel, ACAM.transformToLuv(newEigen, variance, cy / 299.0), t)
-    let newCol = rgbTriadToStr(outCol)
-    let outOfGamut = outCol.some(it=>it < -0.00002)
+    outcol = lerpWithAmbLuv(selectedRgbModel, ACAM.transformToLuv(newEigen, variance, lumaScale), t * lumaScale)
+    let newCol = rgbTriadToStr(outcol)
+    let outOfGamut = outcol.some(it=>it < -0.00002)
 
     setOutputSwatch(newCol, outOfGamut)
     setOutputCcode(newCol, outOfGamut)
+    document.getElementById("gradcursor").setAttribute("fill", rgbTriadToStr(outcol))
 }
 
 const gradMap = [[]]
@@ -226,8 +228,19 @@ function lerpWithAmbLuv(rgbfuns, clLuv, t) {
     return rgbfuns.fromXYZ(lx, ly, lz)
 }
 
-function drawGradCursor() {
-    // TODO svg
+function drawGradCursor(x, y) {
+    let cursor = document.getElementById("gradcursor")
+
+    let selectedLuminance = outcol[0] * 0.375 + outcol[1] * 0.5 + outcol[2] * 0.125
+    if (selectedLuminance > 0.5)
+        cursor.setAttribute("stroke", "#000000")
+    else
+        cursor.setAttribute("stroke", "#FFFFFF")
+
+    cursor.setAttribute("fill", rgbTriadToStr(outcol))
+
+    cursor.setAttribute("cx", x)
+    cursor.setAttribute("cy", y)
 }
 
 function updateGradview() {
@@ -239,11 +252,12 @@ function updateGradview() {
         gradMap[y] = []
         for (let x = 0; x <= maxSteps; x++) {
             let cl = _calculatedEigen.cpy()
-            cl.l *= y / maxSteps
+            let lumaScale = 1.0 - (y / maxSteps)
+            cl.l *= lumaScale
 
             let t = (x / maxSteps) * getCompanededAmbmix()
             // let t = transformAmbMix(x / maxSteps)
-            gradMap[y][x] = lerpWithAmbLuv(rgbfuns, ACAM.transformToLuv(cl, variance, y / maxSteps), t)
+            gradMap[y][x] = lerpWithAmbLuv(rgbfuns, ACAM.transformToLuv(cl, variance, lumaScale), t * lumaScale)
 
             // actually lay down the gradient squares
             if (x > 0 && y > 0) {
