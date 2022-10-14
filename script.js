@@ -245,34 +245,50 @@ function drawGradCursor(x, y) {
 
 function updateGradview() {
     let ctx = document.getElementById("gradview").getContext("2d");
-    const steps = 6
-    const maxSteps = 300 / steps
+    const xSteps = 3
+    const ySteps = 15
+
+    const xMaxSteps = 300 / xSteps
+    const yMaxSteps = 300 / ySteps
+
     const rgbfuns = rgbModels[rgbModel]
-    for (let y = 0; y <= maxSteps; y++) {
+    for (let y = 0; y <= yMaxSteps; y++) {
         gradMap[y] = []
-        for (let x = 0; x <= maxSteps; x++) {
+        for (let x = 0; x <= xMaxSteps; x++) {
             let cl = _calculatedEigen.cpy()
-            let lumaScale = 1.0 - (y / maxSteps)
+            let lumaScale = 1.0 - (y / yMaxSteps)
             cl.l *= lumaScale
 
-            let t = (x / maxSteps) * getCompanededAmbmix()
+            let t = (x / xMaxSteps) * getCompanededAmbmix()
             // let t = transformAmbMix(x / maxSteps)
             gradMap[y][x] = lerpWithAmbLuv(rgbfuns, ACAM.transformToLuv(cl, variance, lumaScale), t * lumaScale)
 
             // actually lay down the gradient squares
             if (x > 0 && y > 0) {
-                ctx.fillStyle = `rgb(
+                /*ctx.fillStyle = `rgb(
+                    ${255.0 * gradMap[y-1][x-1][0]},
+                    ${255.0 * gradMap[y-1][x-1][1]},
+                    ${255.0 * gradMap[y-1][x-1][2]}
+                )`*/
+                const fill1 = `rgb(
                     ${255.0 * gradMap[y-1][x-1][0]},
                     ${255.0 * gradMap[y-1][x-1][1]},
                     ${255.0 * gradMap[y-1][x-1][2]}
                 )`
-                ctx.fillRect(
-                    transformAmbMix2((x-1) / maxSteps) * 300 - 1,
-                    (y-1)*steps,
-                    (transformAmbMix2(x / maxSteps) - transformAmbMix2((x-1) / maxSteps)) * 300 + 1,
-                    steps
-                )
-                // ctx.fillRect((x-1) * steps, (y-1) * steps, steps, steps)
+                const fill2 = `rgb(
+                    ${255.0 * gradMap[y][x-1][0]},
+                    ${255.0 * gradMap[y][x-1][1]},
+                    ${255.0 * gradMap[y][x-1][2]}
+                )`
+                const x1 = transformAmbMix2((x-1) / xMaxSteps) * 300 - 1
+                const y1 = (y-1)*ySteps
+                const x2 = (transformAmbMix2(x / xMaxSteps) - transformAmbMix2((x-1) / xMaxSteps)) * 300 + 1
+                const y2 = y*ySteps
+                const vgrad = ctx.createLinearGradient(0,y1,0,y2)
+                vgrad.addColorStop(0.0, fill1)
+                vgrad.addColorStop(1.0, fill2)
+                ctx.fillStyle = vgrad
+                ctx.fillRect(x1,y1,x2,y2)
             }
         }
     }
