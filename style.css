@@ -1,21 +1,24 @@
 * {
     --cpicker-edge: 36px;
     --cpicker-size: 300px;
+    --cpicker-margin: 36px;
+    --cpicker-sizewmargin: 372px;
 }
 
 html {
-    background: #808080;
+    background: #707070;
     max-width: 960px;
     margin-left: auto;
     margin-right: auto;
+    color: #000;
 }
 
 colourpanel {
     display: grid;
-    grid-template-columns: var(--cpicker-edge) var(--cpicker-size) var(--cpicker-edge);
-    grid-template-rows: var(--cpicker-edge) var(--cpicker-size) var(--cpicker-edge);
-    width: calc(2 * var(--cpicker-edge) + var(--cpicker-size));
-    height: calc(2 * var(--cpicker-edge) + var(--cpicker-size));
+    grid-template-columns: var(--cpicker-edge) var(--cpicker-sizewmargin) var(--cpicker-edge);
+    grid-template-rows: var(--cpicker-edge) var(--cpicker-sizewmargin) var(--cpicker-edge);
+    width: calc(2 * var(--cpicker-edge) + var(--cpicker-sizewmargin));
+    height: calc(2 * var(--cpicker-edge) + var(--cpicker-sizewmargin));
 }
 
 rightpanel {
@@ -50,7 +53,15 @@ selectedcol {
 }
 
 #gradview {
+    position: absolute;
     border: none !important; /* the border messes with the pointer event coord */
+}
+
+#gradviewsvg {
+    position: relative;
+    z-index: 100;
+    right: var(--cpicker-margin);
+    bottom: var(--cpicker-margin);
 }
 
 apppanel {
@@ -83,4 +94,16 @@ footer {
     padding: 0 1em 0 1em;
     font-size: 0.9rem;
     text-align: center;
+}
+
+.gradwrapper {
+    padding: calc(var(--cpicker-margin));
+}
+
+.gradwrapperwrapper {
+    background: #808080;
+}
+
+#outcol_swatch {
+/*     border: 3px solid #eeeeee; */
 }

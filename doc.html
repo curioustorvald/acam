@@ -1,20 +1,23 @@
-<h3>Under Construction!</h3>
+<p>This webapp implements my theory about the <em>Artistic Colour Appearance Model</em>.</p>
 
-<h4>What works:</h4>
+<p>It is a common tip in the art community that when you use HSV colour model for your colour picker, vary the H-slider as you darken the colour to make it look more vibrant. The <em>ACAM</em> (pronounced /'æɪ.kæm/) generalises the idea using the single parameter <em>Variance</em> over the LCh<sub>UV</sub> colour space.</p>
+
+<h4>How to Use</h4>
+
+<p>Before you start, select the right RGB Model. If you don’t know what RGB Model is, simply select the sRGB; if you’re using Apple devices, select Display P3.</p>
+
+<p>First, select the <em>Eigencolour</em>. The Eigencolour is the true colour of the object.</p>
+
+<p>Second, adjust the Variance slider so that the colour gradient look vibrant enough.</p>
+
+<p>Third, select the <em>Ambient Colour</em>. The Ambient Colour is the colour of the ambient light. Also adjust the <em>Ambient Mix</em> as you need.</p>
+
+<p>Last, simply click on the gradient square!</p>
+
+<h4>Troubleshooting</h4>
 
 <ul>
-<li>The GUI</li>
-<li>Ambient Mixing</li>
+<li>Selected Colour Circle is offsetted from where I’ve touched!<br />☞&emsp;Simply refresh the browser.</li>
+
+<li>Selected Colour’s Hex Code is Red!<br />☞&emsp;Red text means the colour is out of gamut of the selected RGB Model. This is mostly harmless; it just means the selected colour can’t be represented accurately due to the limit of the RGB itself. Again, this is harmless.</li>
 </ul>
-
-<h4>What does not work:</h4>
-
-<ul>
-<li>AdobeRGB colour model</li>
-<li>Variance</li>
-<li>When either the Eigencolour or the Ambient Colour is #000000</li>
-</ul>
-
-<!-- <p>This webapp implements my theory about the <em>Artistic Colour Appearance Model</em>.</p> -->
-
-<!-- <p>It is a common tip in the art community that when you use HSV colour model for your colour picker, vary the H-slider as you darken the colour, which is in part an empirical trick to compensate the error from the natural shading (as observed in CIELAB colour space) to the RGB colour model, also in part, well, it just makes your art look more vibrant. The <em>ACAM</em> (pronounced /'æɪ.kæm/) generalises the idea using the single parameter <em>Variance</em> over the <a href="https://www.hsluv.org/">HSLvu</a> colour space.</p> -->

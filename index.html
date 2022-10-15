@@ -26,12 +26,12 @@
         </div>
 
         <!-- #4 --><div></div>
-        <!-- #5 --><div>
+        <!-- #5 --><div class="gradwrapperwrapper"><div class="gradwrapper">
             <canvas id="gradview" width="300" height="300"></canvas>
-            <svg id="gradviewsvg" style="position:relative;top:-100%" width="300" height="300">
+            <svg id="gradviewsvg" width="372" height="372">
                 <circle id="gradcursor" cx="0" cy="0" r="6" stroke="#FFFFFF" stroke-width="1.5" fill="none" />
             </svg>
-        </div>
+        </div></div>
         <!-- #6 --><div></div>
 
         <!-- #7 --><div>
@@ -57,7 +57,13 @@
                     <option value="AdobeRGB">Adobe RGB</option>
                 </select>
                 <label for="slider_variance">Variance <span id="variance_num">0.0</span></label>
-                <input type="range" id="slider_variance" name="slider_variance" min="-1000" max="1000" step="1" />
+                <input type="range" id="slider_variance" name="slider_variance" min="0" max="1000" step="1" />
+
+                <div>
+                <label for="slider_hue_flip">Flip Hue Shift </label>
+                <input type="checkbox" id="slider_hue_flip" name="slider_hue_flip" />
+                </div>
+
                 <label for="slider_ambmix">Ambient Mix <span id="ambmix_num">0.0</span></label>
                 <input type="range" id="slider_ambmix" name="slider_ambmix" min="0" max="1000" step="1" />
             </form>
@@ -84,6 +90,7 @@ let cy = 299 // colour selector square x
 let variance = 1.0
 let ambmix = 1.0
 let rgbModel = "sRGB"
+let flipChecked = false
 let eigencol = [0.0,0.0,0.0]
 let ambcol = [0.0,0.0,0.0]
 let outcol = [0,0,0]
@@ -144,6 +151,26 @@ const rgbModels = Object.freeze({
                 0.000000*lr + 0.045113*lg + 1.043944*lb
             ]
         }
+    ),
+    AdobeRGB: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                 2.041588*x - 0.565007*y - 0.344731*z,
+                -0.969244*x + 1.875968*y + 0.041555*z,
+                 0.013444*x - 0.118362*y + 1.015175*z
+            ].map(it=>(it <= 0.00174) ? (32.0 * it) : (Math.pow(it, 1.0 / 2.2)))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it <= 0.0556) ? it / 32.0 : Math.pow(it, 2.2))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                0.576669*lr + 0.185558*lg + 0.188229*lb,
+                0.297345*lr + 0.627364*lg + 0.075291*lb,
+                0.027031*lr + 0.070689*lg + 0.991338*lb
+            ]
+        }
     )
 })
 
@@ -169,13 +196,15 @@ function onpageload() {
     rgbModel = document.getElementById("select_colourmodel").value
     eigencol = rgbStrToTriad(document.getElementById("eigen_picker").value)
     ambcol = rgbStrToTriad(document.getElementById("ambient_picker").value)
+    flipChecked = document.getElementById("slider_hue_flip").checked
 
     document.getElementById("variance_num").innerText = ''+variance
     document.getElementById("ambmix_num").innerText = ''+ambmix
 
+    recalculatePivotHues()
     updatePicker()
     updateGradview()
-    drawGradCursor()
+    drawGradCursor(cx + 36, cy + 36)
 }
 
 function loadArticle(filePath, callback) {
@@ -196,8 +225,9 @@ loadArticle("doc.html", (html) => {
 })
 
 document.getElementById("slider_variance").oninput = (event) => { variance = event.target.value / 1000.0; document.getElementById("variance_num").innerText = ''+variance; updatePicker(); updateGradview() }
+document.getElementById("slider_hue_flip").oninput = (event) => { flipChecked = event.target.checked; updatePicker(); updateGradview() }
 document.getElementById("slider_ambmix").oninput = (event) => { ambmix = event.target.value / 1000.0; document.getElementById("ambmix_num").innerText = ''+ambmix; updatePicker(); updateGradview() }
-document.getElementById("select_colourmodel").oninput = (event) => { rgbModel = event.target.value; updatePicker(); updateGradview() }
+document.getElementById("select_colourmodel").oninput = (event) => { rgbModel = event.target.value; recalculatePivotHues(); updatePicker(); updateGradview() }
 document.getElementById("eigen_picker").oninput = (event) => { eigencol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
 document.getElementById("ambient_picker").oninput = (event) => { ambcol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
 
@@ -208,9 +238,10 @@ const updater = (event) => {
         let newRect = event.target.getBoundingClientRect()
         if (newRect.width == 300 && newRect.height == 300) gradRect = newRect // wtf html?
         const [mx, my] = [event.clientX - gradRect.x, event.clientY - gradRect.y]
-        cx = mx;cy = my;
+        cx = mx.coerceIn(0,299)
+        cy = my.coerceIn(0,299)
         updatePicker()
-        drawGradCursor(mx, my)
+        drawGradCursor(cx + 36, cy + 36)
     }
 }
 

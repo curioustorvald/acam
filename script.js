@@ -27,7 +27,7 @@ class Lch { // LCH_uv
         return [L_, u, v] // 0-100, -100-100, -100-100
     }
 
-    static lvuToXyz(rgbModel, L_, u, v) { // 0-100, -100-100, -100-100
+    static luvToXyz(rgbModel, L_, u, v) { // 0-100, -100-100, -100-100
         if (u === undefined || v === undefined) throw Error("Illegal param")
 
         if (L_ < 0.000001) return [0.0, 0.0, 0.0]
@@ -69,7 +69,7 @@ class Lch { // LCH_uv
         let hrad = this.h * Math.PI / 180.0
         let u = this.c * Math.cos(hrad)
         let v = this.c * Math.sin(hrad)
-        let [x, y, z] = Lch.lvuToXyz(rgbModel, this.l, u, v)
+        let [x, y, z] = Lch.luvToXyz(rgbModel, this.l, u, v)
         let [r, g, b] = rgbModel.fromXYZ(x, y, z)
 
         // console.log("hsluv->lch", this.l, this.c, this.h)
@@ -99,6 +99,8 @@ class Hsluv {
     }
 
     static fromLch(lch) {
+        return new Hsluv(lch.h, lch.c, lch.l)
+
         let h = lch.h;
         let s = 0.0;
         let l = 0.0;
@@ -124,6 +126,8 @@ class Hsluv {
     }
 
     toLch() {
+        return new Lch(this.l, this.s, this.h)
+
         let l = 0.0;
         let c = 0.0;
         let h = this.h;
@@ -152,16 +156,42 @@ class Hsluv {
     }
 }
 
+let rgbTriadHueList = [12.17705316, 127.7150886, 265.8744304] // update when RGB model changes!
+
+function recalculatePivotHues() {
+    // let model = rgbModels[rgbModel];
+    // rgbTriadHueList = [[255,0,0], [0,255,0], [0,0,255]].map(([r,g,b])=>Hsluv.fromLch(Lch.fromRGB(model, r, g, b)).h)
+}
+
 const ACAM = {}
-ACAM.transformToHsluv = function(hsluv, variance, relativeLuma) {
+ACAM.transformToHsluv = function(hsluv, var_, relativeLuma) {
     if (relativeLuma === undefined) throw Error()
 
+    let variance = var_
+    // let variance = var_*var_
+    // let variance = transformAmbMix(var_)
     let oldh = hsluv.h
-    let h = oldh + (variance * 120) * Math.pow(1.0 - relativeLuma, 2.0) // TODO this is just there to show the colour selection is funneled thru this function
+    let lumaScale = Math.pow(1.0 - relativeLuma, 1.0 / (variance + 0.001)) // 0 on max luma, 1 on min luma
 
     // TODO
     // figure out the exact value of "(variance * 120)"
     // and then the multiplier will be something like "Math.pow(1.0 - relativeLuma, 1.0 + Math.abs(variance))"
+    // let [hue, gravity, hueIndex] = rgbTriadHueList.map((pivot,i)=>[pivot,pivot - oldh,i]).sort((a,b)=>Math.abs(a[1])-Math.abs(b[1]))[0]
+    // console.log("hue, gravity", oldh, hue, gravity, hueIndex)
+    // let otherHueIndex = (hueIndex - Math.sign(gravity)) % 3
+    // if (otherHueIndex < 0) otherHueIndex += 3
+    // let otherHue = rgbTriadHueList[otherHueIndex]
+    // let otherGravity = (oldh - otherHue) * Math.sign(gravity)
+    // if (otherGravity < 0) otherGravity += 360
+    // match the sign of the otherGravity with the gravity
+    // if (gravity * otherGravity < 0) otherGravity *= -1
+    // console.log("other", otherHue, otherGravity, otherHueIndex)
+
+    // console.log("gravities", gravity, otherGravity)
+
+    let gravity = 120.0 * Math.pow(variance, 1.0)
+
+    let h = oldh + gravity * lumaScale * (flipChecked ? -1 : 1)
 
     return new Hsluv(h, hsluv.s, hsluv.l)
 }
@@ -198,14 +228,19 @@ function updatePicker() {
     _calculatedEigen = eigen.cpy()
     let lumaScale = 1.0 - (cy / 299.0)
     let luma = eigen.l * lumaScale
-    let newEigen = new Hsluv(eigen.h, eigen.s, luma)
+    let chroma = eigen.s * lumaScale
+    let newEigen = new Hsluv(eigen.h, chroma, luma)
 
     // console.log("newEigen", newEigen)
 
     let t = transformAmbMix(cx / 299.0) * getCompanededAmbmix()
     outcol = lerpWithAmbLuv(selectedRgbModel, ACAM.transformToLuv(newEigen, variance, lumaScale), t * lumaScale)
     let newCol = rgbTriadToStr(outcol)
-    let outOfGamut = outcol.some(it=>it < -0.00002)
+    let outOfGamut = outcol.some(it=>it < -0.001961)
+
+    if (outOfGamut) {
+        console.log("Out of gamut", outcol)
+    }
 
     setOutputSwatch(newCol, outOfGamut)
     setOutputCcode(newCol, outOfGamut)
@@ -224,7 +259,8 @@ function lerpWithAmbLuv(rgbfuns, clLuv, t) {
     let crLuv = Lch.xyzToLvu(rgbfuns, crx, cry, crz)
 
     let [ll, lu, lv] = [0,1,2].map(it=>lerp(clLuv[it], crLuv[it], t)) // in Luv
-    let [lx, ly, lz] = Lch.lvuToXyz(rgbfuns, ll, lu, lv)
+    let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, ll, lu, lv)
+
     return rgbfuns.fromXYZ(lx, ly, lz)
 }
 
@@ -258,6 +294,7 @@ function updateGradview() {
             let cl = _calculatedEigen.cpy()
             let lumaScale = 1.0 - (y / yMaxSteps)
             cl.l *= lumaScale
+            cl.s *= lumaScale
 
             let t = (x / xMaxSteps) * getCompanededAmbmix()
             // let t = transformAmbMix(x / maxSteps)
