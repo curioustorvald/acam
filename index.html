@@ -47,33 +47,49 @@
 
     </colourpanel>
     <rightpanel>
-        <sliderpanel>
-            <form id="sliders">
-                <label for="select_colourmodel">RGB Model</label>
-                <select name="select_colourmodel" id="select_colourmodel">
-                    <option value="sRGB">sRGB (select this)</option>
-                    <option value="AppleP3">Display P3 (Apple devices)</option>
-                    <option value="AdobeRGB">Adobe RGB</option>
-                </select>
-                <label for="slider_variance">Variance <span id="variance_num">0.0</span></label>
-                <input type="range" id="slider_variance" name="slider_variance" min="0" max="1000" step="1" />
+        <mainsliderpanel>
+            <div style="display:grid;height:inherit;">
+                <form class="sliders" id="sliders">
+                    <label for="select_colourmodel">RGB Model</label>
+                    <select name="select_colourmodel" id="select_colourmodel">
+                        <option value="sRGB">sRGB (select this)</option>
+                        <option value="AppleP3">Display P3 (Apple devices)</option>
+                        <option value="AdobeRGB">Adobe RGB</option>
+                    </select>
+                    <label for="slider_variance">Variance <span id="variance_num">0.0</span></label>
+                    <input type="range" id="slider_variance" name="slider_variance" min="0" max="100" step="1" />
 
-                <div>
-                <label for="slider_hue_flip">Flip Hue Shift </label>
-                <input type="checkbox" id="slider_hue_flip" name="slider_hue_flip" />
-                </div>
+                    <div>
+                    <label for="slider_hue_flip">Flip Hue Shift </label>
+                    <input type="checkbox" id="slider_hue_flip" name="slider_hue_flip" />
+                    </div>
 
-                <label for="slider_ambmix">Ambient Mix <span id="ambmix_num">0.0</span></label>
-                <input type="range" id="slider_ambmix" name="slider_ambmix" min="0" max="1000" step="1" />
-            </form>
-        </sliderpanel>
-        <selectedcol>
-            <div><h4>Selected Colour</h4></div>
-            <div style="height:36px">
-                <div id="outcol_swatch" style="display:inline-block;background-color:#FAFAFA;width:36px;height:36px"></div>
-                <span id="outcol_text" style="padding:0;margin:0">#FAFAFA</span>
+                    <label for="slider_ambmix">Ambient Mix <span id="ambmix_num">0.0</span></label>
+                    <input type="range" id="slider_ambmix" name="slider_ambmix" min="0" max="100" step="1" />
+                </form>
+                <selectedcol>
+                    <div><h4>Selected Colour</h4></div>
+                    <div style="height:36px">
+                        <div id="outcol_swatch" style="display:inline-block;background-color:#FAFAFA;width:36px;height:36px"></div>
+                        <span id="outcol_text" style="padding:0;margin:0">#FAFAFA</span>
+                    </div>
+                </selectedcol>
             </div>
-        </selectedcol>
+        </mainsliderpanel>
+        <accordion vertical="">
+            <input type="checkbox" id="accordion1" class="hidecontent"/>
+            <label for="accordion1">Advanced Options</label>
+            <div class="content hidecontent">
+                <form class="sliders" id="extrasliders">
+                    <label for="select_amb_blend_mode">Ambient Blend Mode</label>
+                    <select name="select_amb_blend_mode" id="select_amb_blend_mode">
+                        <option value="normal">Normal</option>
+                        <option value="multiply">Multiply</option>
+                        <option value="screen">Screen</option>
+                    </select>
+                </form>
+            </div>
+        </accordion>
     </rightpanel>
     </apppanel>
     <docpanel id="docpanel"></docpanel>
@@ -89,6 +105,7 @@ let cy = 299 // colour selector square x
 let variance = 1.0
 let ambmix = 1.0
 let rgbModel = "sRGB"
+let ambBlend = "normal"
 let flipChecked = false
 let eigencol = [0.0,0.0,0.0]
 let ambcol = [0.0,0.0,0.0]
@@ -190,9 +207,10 @@ function rgbTriadToStr(rgb) {
 }
 
 function onpageload() {
-    variance = document.getElementById("slider_variance").value / 1000.0
-    ambmix = document.getElementById("slider_ambmix").value / 1000.0
+    variance = document.getElementById("slider_variance").value / 100.0
+    ambmix = document.getElementById("slider_ambmix").value / 100.0
     rgbModel = document.getElementById("select_colourmodel").value
+    ambBlend = document.getElementById("select_amb_blend_mode").value
     eigencol = rgbStrToTriad(document.getElementById("eigen_picker").value)
     ambcol = rgbStrToTriad(document.getElementById("ambient_picker").value)
     flipChecked = document.getElementById("slider_hue_flip").checked
@@ -222,10 +240,11 @@ loadArticle("doc.html", (html) => {
     document.getElementById("docpanel").innerHTML = html
 })
 
-document.getElementById("slider_variance").oninput = (event) => { variance = event.target.value / 1000.0; document.getElementById("variance_num").innerText = ''+variance; updatePicker(); updateGradview() }
+document.getElementById("slider_variance").oninput = (event) => { variance = event.target.value / 100.0; document.getElementById("variance_num").innerText = ''+variance; updatePicker(); updateGradview() }
 document.getElementById("slider_hue_flip").oninput = (event) => { flipChecked = event.target.checked; updatePicker(); updateGradview() }
-document.getElementById("slider_ambmix").oninput = (event) => { ambmix = event.target.value / 1000.0; document.getElementById("ambmix_num").innerText = ''+ambmix; updatePicker(); updateGradview() }
+document.getElementById("slider_ambmix").oninput = (event) => { ambmix = event.target.value / 100.0; document.getElementById("ambmix_num").innerText = ''+ambmix; updatePicker(); updateGradview() }
 document.getElementById("select_colourmodel").oninput = (event) => { rgbModel = event.target.value; updatePicker(); updateGradview() }
+document.getElementById("select_amb_blend_mode").oninput = (event) => { ambBlend = event.target.value; updatePicker(); updateGradview() }
 document.getElementById("eigen_picker").oninput = (event) => { eigencol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
 document.getElementById("ambient_picker").oninput = (event) => { ambcol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
 

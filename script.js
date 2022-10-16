@@ -182,6 +182,33 @@ function updatePicker() {
     document.getElementById("gradcursor").setAttribute("fill", rgbTriadToStr(outcol))
 }
 
+const blendfuns = { // returns [r,g,b]
+    normal(rgbfuns, clLuv, crLuv, t) {
+        let [ll, lu, lv] = [0,1,2].map(it=>lerp(clLuv[it], crLuv[it], t))
+        let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, ll, lu, lv)
+        return rgbfuns.fromXYZ(lx, ly, lz)
+    },
+    multiply(rgbfuns, clLuv, crLuv, t) {
+        let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, clLuv[0], clLuv[1], clLuv[2])
+        let lrgb = rgbfuns.fromXYZ(lx, ly, lz)
+
+        let [rx, ry, rz] = Lch.luvToXyz(rgbfuns, crLuv[0], crLuv[1], crLuv[2])
+        let rrgb = rgbfuns.fromXYZ(rx, ry, rz)
+        let lrrgb = [0,1,2].map(it=>lrgb[it]*rrgb[it])
+
+        return [0,1,2].map(it=>lerp(lrgb[it], lrrgb[it], t))
+    },
+    screen(rgbfuns, clLuv, crLuv, t) {
+        let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, clLuv[0], clLuv[1], clLuv[2])
+        let lrgb = rgbfuns.fromXYZ(lx, ly, lz)
+
+        let [rx, ry, rz] = Lch.luvToXyz(rgbfuns, crLuv[0], crLuv[1], crLuv[2])
+        let rrgb = rgbfuns.fromXYZ(rx, ry, rz)
+        let lrrgb = [0,1,2].map(it=>1.0-(1.0-lrgb[it])*(1.0-rrgb[it]))
+
+        return [0,1,2].map(it=>lerp(lrgb[it], lrrgb[it], t))
+    },
+}
 const gradMap = [[]]
 
 function lerp(X, Y, t) {
@@ -189,14 +216,10 @@ function lerp(X, Y, t) {
 }
 
 function lerpWithAmbLuv(rgbfuns, clLuv, t) {
-
     let [crx, cry, crz] = rgbfuns.toXYZ(ambcol[0], ambcol[1], ambcol[2])
     let crLuv = Lch.xyzToLvu(rgbfuns, crx, cry, crz)
 
-    let [ll, lu, lv] = [0,1,2].map(it=>lerp(clLuv[it], crLuv[it], t)) // in Luv
-    let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, ll, lu, lv)
-
-    return rgbfuns.fromXYZ(lx, ly, lz)
+    return blendfuns[ambBlend](rgbfuns, clLuv, crLuv, t)
 }
 
 function drawGradCursor(x, y) {

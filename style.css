@@ -3,6 +3,7 @@
     --cpicker-size: 300px;
     --cpicker-margin: 36px;
     --cpicker-sizewmargin: 372px;
+    --grid-gap: 10px;
 }
 
 html {
@@ -24,12 +25,16 @@ colourpanel {
 rightpanel {
     display: grid;
     height: var(--cpicker-size);
-    grid-template-rows: auto auto;
     padding: var(--cpicker-edge) 0;
+    grid-template-columns: auto auto auto;
+    grid-gap: var(--grid-gap);
 }
 
-sliderpanel {
-    display: block;
+mainsliderpanel {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto;
+    height: var(--cpicker-sizewmargin);
 }
 
 selectedcol {
@@ -47,9 +52,10 @@ selectedcol {
     line-height: var(--cpicker-edge);
 }
 
-#sliders {
+.sliders {
     display: grid;
-    grid-template-rows: auto auto auto auto;
+    grid-template-columns: auto;
+    width: max-content;
 }
 
 #gradview {
@@ -63,6 +69,63 @@ selectedcol {
     right: var(--cpicker-margin);
     bottom: var(--cpicker-margin);
 }
+
+accordion > label {
+    writing-mode: vertical-lr;
+    text-align: center;
+    background: #808080;
+}
+
+.hidecontent {
+    display: none;
+}
+
+/* define accordion */
+accordion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--grid-gap);
+}
+accordion[vertical] {
+    flex-direction: row;
+}
+
+/* add arrows to the accordion */
+accordion input:not(checked) + label:before {
+    content: "▼ ";
+}
+accordion input:checked + label:before {
+    content: "▲ ";
+}
+accordion[vertical] input:not(checked) + label:before {
+    content: "▶ ";
+}
+accordion[vertical] input:checked + label:before {
+    content: "◀ ";
+}
+/* make accordions actually work */
+accordion input:checked + label + .content {
+    display: block;
+    webkit-animation: fadeIn 0.5s ease-out;
+    -moz-animation: fadeIn 0.5s ease-out;
+    -o-animation: fadeIn 0.5s ease-out;
+    animation: fadeIn 0.5s ease-out;
+}
+@keyframes fadeIn {
+    0% {
+        display: none;
+        opacity: 0;
+    }
+    1% {
+        display: block;
+        opacity: 1;
+    }
+    100% {
+        display: block;
+        opacity: 1;
+    }
+}
+
 
 apppanel {
     display: grid;
