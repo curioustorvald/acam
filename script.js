@@ -72,10 +72,10 @@ class Lch { // LCH_uv
         let [x, y, z] = Lch.luvToXyz(rgbModel, this.l, u, v)
         let [r, g, b] = rgbModel.fromXYZ(x, y, z)
 
-        // console.log("hsluv->lch", this.l, this.c, this.h)
-        // console.log("hsluv->lch->luv", this.l, u, v)
-        // console.log("hsluv->lch->luv->xyz", x, y, z)
-        // console.log("hsluv->lch->luv->xyz->rgb", r, g, b)
+        // console.log("hsl->lch", this.l, this.c, this.h)
+        // console.log("hsl->lch->luv", this.l, u, v)
+        // console.log("hsl->lch->luv->xyz", x, y, z)
+        // console.log("hsl->lch->luv->xyz->rgb", r, g, b)
 
         return [r, g, b]
     }
@@ -88,119 +88,54 @@ class Lch { // LCH_uv
     }
 }
 
-class Hsluv {
+class Hsl {
     h;s;l;
-    // some snippets comes from https://github.com/hsluv/hsluv-javascript/blob/main/src/hsluv.ts
-    constructor(hue, saturation, light) {
-        if ([hue,saturation,light].some(it=>it===undefined)) throw Error()
+    // this "Hsl" is completely unrelated to the RGB-Based Hue-Saturation-Value, nor the Alexei Boronine's invention (https://www.hsl.org/)
+    /*
+     * Hue: CIELch_uv Hue
+     * Saturation: CIELch_uv Chrominance that is subject to be adapted to the will-be-given lightness change
+     * Lightness: CIELch_uv Lightness
+     */
+    constructor(hue, saturation, lightness) {
+        if ([hue,saturation,lightness].some(it=>it===undefined)) throw Error()
         this.h = hue
         this.s = saturation
-        this.l = light
+        this.l = lightness
     }
 
     static fromLch(lch) {
-        return new Hsluv(lch.h, lch.c, lch.l)
-
-        let h = lch.h;
-        let s = 0.0;
-        let l = 0.0;
-
-        if (lch.l > 99.9999999) {
-            s = 0.0;
-            l = 100.0;
-        }
-        else if (lch.l < 0.00000001) {
-            s = 0.0;
-            l = 0.0;
-        }
-        else {
-            hsluv.calculateBoundingLines(lch.l);
-            const max = hsluv.calcMaxChromaHsluv(lch.h);
-            s = lch.c / max * 100.0;
-            l = lch.l;
-        }
-
-        // console.log("rgb->xyz->luv->lch->hsluv", h, s, l)
-
-        return new Hsluv(h, s, l)
+        return new Hsl(lch.h, lch.c, lch.l)
     }
 
     toLch() {
         return new Lch(this.l, this.s, this.h)
-
-        let l = 0.0;
-        let c = 0.0;
-        let h = this.h;
-        if (this.l > 99.9999999) {
-            l = 100.0;
-            c = 0.0;
-        }
-        else if (this.l < 0.00000001) {
-           l = 0.0;
-           c = 0.0;
-        }
-        else {
-            l = this.l;
-            hsluv.calculateBoundingLines(this.l);
-            const max = hsluv.calcMaxChromaHsluv(this.h);
-            c = max / 100.0 * this.s;
-        }
-
-        // console.log("hsluv", this.h, this.s, this.l)
-
-        return new Lch(l, c, h)
     }
 
     cpy() {
-        return new Hsluv(this.h, this.s, this.l)
+        return new Hsl(this.h, this.s, this.l)
     }
 }
 
-let rgbTriadHueList = [12.17705316, 127.7150886, 265.8744304] // update when RGB model changes!
-
-function recalculatePivotHues() {
-    // let model = rgbModels[rgbModel];
-    // rgbTriadHueList = [[255,0,0], [0,255,0], [0,0,255]].map(([r,g,b])=>Hsluv.fromLch(Lch.fromRGB(model, r, g, b)).h)
-}
-
 const ACAM = {}
-ACAM.transformToHsluv = function(hsluv, var_, relativeLuma) {
-    if (relativeLuma === undefined) throw Error()
+ACAM.transformToHsl = function(hsl, variance, lightness) {
+    if (lightness === undefined) throw Error()
 
-    let variance = var_
-    // let variance = var_*var_
-    // let variance = transformAmbMix(var_)
-    let oldh = hsluv.h
-    let lumaScale = Math.pow(1.0 - relativeLuma, 1.0 / (variance + 0.001)) // 0 on max luma, 1 on min luma
+    let oldh = hsl.h
+    let q = 1.00001 / (variance + 0.00001) // to avoid the division by zero
+    let lightnessScale = 1.0 - Math.pow(1.0 - Math.pow(1.0 - lightness, q), 1.0 / q)
 
-    // TODO
-    // figure out the exact value of "(variance * 120)"
-    // and then the multiplier will be something like "Math.pow(1.0 - relativeLuma, 1.0 + Math.abs(variance))"
-    // let [hue, gravity, hueIndex] = rgbTriadHueList.map((pivot,i)=>[pivot,pivot - oldh,i]).sort((a,b)=>Math.abs(a[1])-Math.abs(b[1]))[0]
-    // console.log("hue, gravity", oldh, hue, gravity, hueIndex)
-    // let otherHueIndex = (hueIndex - Math.sign(gravity)) % 3
-    // if (otherHueIndex < 0) otherHueIndex += 3
-    // let otherHue = rgbTriadHueList[otherHueIndex]
-    // let otherGravity = (oldh - otherHue) * Math.sign(gravity)
-    // if (otherGravity < 0) otherGravity += 360
-    // match the sign of the otherGravity with the gravity
-    // if (gravity * otherGravity < 0) otherGravity *= -1
-    // console.log("other", otherHue, otherGravity, otherHueIndex)
+    let gravity = 120.0
 
-    // console.log("gravities", gravity, otherGravity)
+    let h = oldh + gravity * lightnessScale * (flipChecked ? -1 : 1)
 
-    let gravity = 120.0 * Math.pow(variance, 1.0)
-
-    let h = oldh + gravity * lumaScale * (flipChecked ? -1 : 1)
-
-    return new Hsluv(h, hsluv.s, hsluv.l)
+    return new Hsl(h, hsl.s, hsl.l)
 }
-ACAM.transformToLuv = function(hsluv, variance, relativeLuma) {
-    let tcol = ACAM.transformToHsluv(hsluv, variance, relativeLuma)
+ACAM.transformToLuv = function(hsl, variance, lightness) {
+    let tcol = ACAM.transformToHsl(hsl, variance, lightness)
     return tcol.toLch().toLuv()
 }
-ACAM.transformToRGB = function(rgbModel, hsluv, variance, relativeLuma) {
-    let tcol = ACAM.transformToHsluv(hsluv, variance, relativeLuma)
+ACAM.transformToRGB = function(rgbModel, hsl, variance, lightness) {
+    let tcol = ACAM.transformToHsl(hsl, variance, lightness)
     return tcol.toLch().toRGB(rgbModel)
 }
 
@@ -221,20 +156,20 @@ function updatePicker() {
 
     let selectedRgbModel = rgbModels[rgbModel]
     let eigenLCH = Lch.fromRGB(selectedRgbModel, eigencol[0], eigencol[1], eigencol[2])
-    let eigen = Hsluv.fromLch(eigenLCH)
+    let eigen = Hsl.fromLch(eigenLCH)
 
     // console.log("let eigen =", eigen)
 
     _calculatedEigen = eigen.cpy()
-    let lumaScale = 1.0 - (cy / 299.0)
-    let luma = eigen.l * lumaScale
-    let chroma = eigen.s * lumaScale
-    let newEigen = new Hsluv(eigen.h, chroma, luma)
+    let lightnessScale = 1.0 - (cy / 299.0)
+    let newLightness = eigen.l * lightnessScale
+    let saturation = eigen.s * lightnessScale // uniform Saturation is obtained by transforming the Chroma with a proper function relative to the lightness
+    let newEigen = new Hsl(eigen.h, saturation, newLightness)
 
     // console.log("newEigen", newEigen)
 
     let t = transformAmbMix(cx / 299.0) * getCompanededAmbmix()
-    outcol = lerpWithAmbLuv(selectedRgbModel, ACAM.transformToLuv(newEigen, variance, lumaScale), t * lumaScale)
+    outcol = lerpWithAmbLuv(selectedRgbModel, ACAM.transformToLuv(newEigen, variance, lightnessScale), t * lightnessScale)
     let newCol = rgbTriadToStr(outcol)
     let outOfGamut = outcol.some(it=>it < -0.001961)
 
@@ -292,21 +227,15 @@ function updateGradview() {
         gradMap[y] = []
         for (let x = 0; x <= xMaxSteps; x++) {
             let cl = _calculatedEigen.cpy()
-            let lumaScale = 1.0 - (y / yMaxSteps)
-            cl.l *= lumaScale
-            cl.s *= lumaScale
+            let lightnessScale = 1.0 - (y / yMaxSteps)
+            cl.l *= lightnessScale
+            cl.s *= lightnessScale // uniform Saturation is obtained by transforming the Chroma with a proper function relative to the lightness
 
             let t = (x / xMaxSteps) * getCompanededAmbmix()
-            // let t = transformAmbMix(x / maxSteps)
-            gradMap[y][x] = lerpWithAmbLuv(rgbfuns, ACAM.transformToLuv(cl, variance, lumaScale), t * lumaScale)
+            gradMap[y][x] = lerpWithAmbLuv(rgbfuns, ACAM.transformToLuv(cl, variance, lightnessScale), t * lightnessScale)
 
             // actually lay down the gradient squares
             if (x > 0 && y > 0) {
-                /*ctx.fillStyle = `rgb(
-                    ${255.0 * gradMap[y-1][x-1][0]},
-                    ${255.0 * gradMap[y-1][x-1][1]},
-                    ${255.0 * gradMap[y-1][x-1][2]}
-                )`*/
                 const fill1 = `rgb(
                     ${255.0 * gradMap[y-1][x-1][0]},
                     ${255.0 * gradMap[y-1][x-1][1]},

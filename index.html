@@ -3,7 +3,6 @@
 <html>
 <head>
     <link rel="stylesheet" type="text/css" href="style.css">
-    <script src="hsluv.js"></script>
     <script src="script.js"></script>
 </head>
 <title>Lazy Artist’s Colour Picker</title>
@@ -94,7 +93,7 @@ let flipChecked = false
 let eigencol = [0.0,0.0,0.0]
 let ambcol = [0.0,0.0,0.0]
 let outcol = [0,0,0]
-let _calculatedEigen = new Hsluv(0,0,0)
+let _calculatedEigen = new Hsl(0,0,0)
 
 const setOutputSwatch = (style, outOfGamut) => {
     document.getElementById("outcol_swatch").style["background-color"] = style
@@ -201,7 +200,6 @@ function onpageload() {
     document.getElementById("variance_num").innerText = ''+variance
     document.getElementById("ambmix_num").innerText = ''+ambmix
 
-    recalculatePivotHues()
     updatePicker()
     updateGradview()
     drawGradCursor(cx + 36, cy + 36)
@@ -227,7 +225,7 @@ loadArticle("doc.html", (html) => {
 document.getElementById("slider_variance").oninput = (event) => { variance = event.target.value / 1000.0; document.getElementById("variance_num").innerText = ''+variance; updatePicker(); updateGradview() }
 document.getElementById("slider_hue_flip").oninput = (event) => { flipChecked = event.target.checked; updatePicker(); updateGradview() }
 document.getElementById("slider_ambmix").oninput = (event) => { ambmix = event.target.value / 1000.0; document.getElementById("ambmix_num").innerText = ''+ambmix; updatePicker(); updateGradview() }
-document.getElementById("select_colourmodel").oninput = (event) => { rgbModel = event.target.value; recalculatePivotHues(); updatePicker(); updateGradview() }
+document.getElementById("select_colourmodel").oninput = (event) => { rgbModel = event.target.value; updatePicker(); updateGradview() }
 document.getElementById("eigen_picker").oninput = (event) => { eigencol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
 document.getElementById("ambient_picker").oninput = (event) => { ambcol = rgbStrToTriad(event.target.value); updatePicker(); updateGradview() }
 
