@@ -70,7 +70,7 @@
                 <selectedcol>
                     <div><h4>Selected Colour</h4></div>
                     <div style="height:36px">
-                        <div id="outcol_swatch" style="display:inline-block;background-color:#FAFAFA;width:36px;height:36px"></div>
+                        <div id="outcol_swatch" style="display:inline-block;background-color:#FAFAFA;width:36px;height:36px" title="Click to Copy the Hex Code"></div>
                         <span id="outcol_text" style="padding:0;margin:0">#FAFAFA</span>
                     </div>
                 </selectedcol>
@@ -268,6 +268,16 @@ const updater = (event) => {
 document.getElementById("gradviewsvg").onpointermove = updater
 document.getElementById("gradviewsvg").onpointerdown = updater
 
+document.getElementById("outcol_swatch").onpointerdown = (event) => {
+    let text = document.getElementById("outcol_text").innerText
+
+    console.log(text)
+    navigator.clipboard.writeText(text).then(()=>{
+        alert(`Copied the Hex Code ${text}`)
+    }, (e)=>{
+        alert(`Could not copy the text: ${e}`)
+    })
+}
 
 </script>
 </html>
