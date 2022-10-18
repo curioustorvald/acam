@@ -139,10 +139,6 @@ ACAM.transformToRGB = function(rgbModel, hsl, variance, lightness) {
     return tcol.toLch().toRGB(rgbModel)
 }
 
-function getCompanededAmbmix() {
-    return transformAmbMix(ambmix)
-}
-
 function transformAmbMix(t) {
     return Math.asin(t) / (0.5 * Math.PI)
 }
@@ -168,7 +164,7 @@ function updatePicker() {
 
     // console.log("newEigen", newEigen)
 
-    let t = transformAmbMix(cx / 299.0) * getCompanededAmbmix()
+    let t = transformAmbMix(cx / 299.0) * ambmix
     outcol = lerpWithAmbLuv(selectedRgbModel, ACAM.transformToLuv(newEigen, variance, lightnessScale), t * lightnessScale)
     let newCol = rgbTriadToStr(outcol)
     let outOfGamut = outcol.some(it=>it < -0.001961)
@@ -254,7 +250,7 @@ function updateGradview() {
             cl.l *= lightnessScale
             cl.s *= lightnessScale // uniform Saturation is obtained by transforming the Chroma with a proper function relative to the lightness
 
-            let t = (x / xMaxSteps) * getCompanededAmbmix()
+            let t = (x / xMaxSteps) * ambmix
             gradMap[y][x] = lerpWithAmbLuv(rgbfuns, ACAM.transformToLuv(cl, variance, lightnessScale), t * lightnessScale)
 
             // actually lay down the gradient squares
