@@ -233,8 +233,14 @@ function drawGradCursor(x, y) {
     cursor.setAttribute("cy", y)
 }
 
+const canvasColourSpace = {
+    "sRGB": "srgb",
+    "AppleP3": "display-p3",
+    "AdobeRGB": "adobe-rgb" // currently unsupported!!
+}
+
 function updateGradview() {
-    let ctx = document.getElementById("gradview").getContext("2d");
+    let ctx = document.getElementById("gradview").getContext("2d", { colorSpace: canvasColourSpace[rgbModel] });
     const xSteps = 3
     const ySteps = 15
 
