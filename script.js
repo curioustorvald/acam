@@ -1,6 +1,6 @@
 "use strict";
 
-class Lch { // LCH_uv
+class Lch { // OKLCH
     l;c;h;
     constructor(luma, chroma, hue) {
         if ([luma,chroma,hue].some(it=>it===undefined)) throw Error()
@@ -9,49 +9,42 @@ class Lch { // LCH_uv
         this.c = chroma // 0-100
     }
 
-    static xyzToLvu(rgbModel, X_, Y_, Z_) {
+    static xyzToLab(rgbModel, X_, Y_, Z_) {
         if (Y_ === undefined || Z_ === undefined) throw Error("Illegal param")
+        // FIXME D65 only!
 
-        // http://www.brucelindbloom.com/index.html
-        // Capital letters here have _ appended (e.g. X_, L_)
-        let [X_r, Y_r, Z_r] = rgbModel.toXYZ(1.0, 1.0, 1.0)
-        let yr = Y_ / Y_r
-        let up = 4.0*X_ / (X_ + 15.0*Y_ + 3.0*Z_)
-        let vp = 9.0*Y_ / (X_ + 15.0*Y_ + 3.0*Z_)
-        let upr = 4.0*X_r / (X_r + 15.0*Y_r + 3.0*Z_r)
-        let vpr = 9.0*Y_r / (X_r + 15.0*Y_r + 3.0*Z_r)
+        let l = Math.pow(0.8189330101*X_ + 0.3618667424*Y_ - 0.1288597137*Z_, 0.333333333333)
+        let m = Math.pow(0.0329845436*X_ + 0.9293118715*Y_ + 0.0361456387*Z_, 0.333333333333)
+        let s = Math.pow(0.0482003018*X_ + 0.2643662691*Y_ + 0.6338517070*Z_, 0.333333333333)
 
-        let L_ = (yr > 216.0/24389.0) ? (116.0 * Math.pow(yr, 1.0/3.0) - 16.0) : (24389.0/27.0 * yr)
-        let u = 13.0*L_ * (up - upr)
-        let v = 13.0*L_ * (vp - vpr)
-        return [L_, u, v] // 0-100, -100-100, -100-100
+        let L = 0.2104542553*l + 0.7936177850*m - 0.0040720468*s
+        let a = 1.9779984951*l - 2.4285922050*m + 0.4505937099*s
+        let b = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s
+
+        return [L, a, b]
     }
 
-    static luvToXyz(rgbModel, L_, u, v) { // 0-100, -100-100, -100-100
-        if (u === undefined || v === undefined) throw Error("Illegal param")
+    static labToXyz(rgbModel, L, a, b) { // 0-1, -1-1, -1-1
+        if (a === undefined || b === undefined) throw Error("Illegal param")
+        if (L < 0.000001) return [0.0, 0.0, 0.0]
+        // FIXME D65 only!
 
-        if (L_ < 0.000001) return [0.0, 0.0, 0.0]
+        let l = Math.pow(0.99999999845051981432*L + 0.39633779217376785678*a + 0.21580375806075880339*b, 3.0)
+        let m = Math.pow(1.0000000088817607767*L - 0.1055613423236563494*a - 0.063854174771705903402*b, 3.0)
+        let s = Math.pow(1.0000000546724109177*L - 0.089484182094965759684*a - 1.2914855378640917399*b, 3.0)
 
-        // http://www.brucelindbloom.com/index.html
-        // Capital letters here have _ appended (e.g. X_, L_)
-        let [X_r, Y_r, Z_r] = rgbModel.toXYZ(1.0, 1.0, 1.0)
-        let upr = 4.0*X_r / (X_r + 15.0*Y_r + 3.0*Z_r)
-        let vpr = 9.0*Y_r / (X_r + 15.0*Y_r + 3.0*Z_r)
-        let Y_ = (L_ > 8.0) ? Math.pow((L_+16.0) / 116.0, 3.0) : L_ * 27.0 / 24389.0
-        let a = (1.0/3.0)*((52.0*L_ / (u + 13.0*L_*upr)) - 1.0)
-        let b = -5.0 * Y_
-        let c = -1.0 / 3.0
-        let d = Y_ * ((39.0*L_ / (v + 13.0*L_*vpr)) - 5.0)
-        let X_ = (d - b) / (a - c)
-        let Z_ = X_ * a + b
-        return [X_, Y_, Z_]
+        let X = 1.227013851103521026*l - 0.5577999806518222383*m + 0.28125614896646780758*s
+        let Y = -0.040580178423280593977*l + 1.1122568696168301049*m - 0.071676678665601200577*s
+        let Z = -0.076381284505706892869*l - 0.42148197841801273055*m + 1.5861632204407947575*s
+
+        return [X, Y, Z]
     }
     /**
      * @param rgbModel usually `rgbModels.sRGB` or something
      */
     static fromRGB(rgbModel, r, g, b) {
         let [x, y, z] = rgbModel.toXYZ(r, g, b)
-        let [l, u, v] = Lch.xyzToLvu(rgbModel, x, y, z)
+        let [l, u, v] = Lch.xyzToLab(rgbModel, x, y, z)
 
         let c = Math.pow(u*u + v*v, 0.5)
         let h = Math.atan2(v,u) * 180.0 / Math.PI
@@ -69,7 +62,7 @@ class Lch { // LCH_uv
         let hrad = this.h * Math.PI / 180.0
         let u = this.c * Math.cos(hrad)
         let v = this.c * Math.sin(hrad)
-        let [x, y, z] = Lch.luvToXyz(rgbModel, this.l, u, v)
+        let [x, y, z] = Lch.labToXyz(rgbModel, this.l, u, v)
         let [r, g, b] = rgbModel.fromXYZ(x, y, z)
 
         // console.log("hsl->lch", this.l, this.c, this.h)
@@ -121,7 +114,7 @@ ACAM.transformToHsl = function(hsl, variance, lightness) {
     if (lightness === undefined) throw Error()
 
     let oldh = hsl.h
-    let q = 1.00001 / (variance + 0.00001) // to avoid the division by zero
+    let q = 1.0 / (variance + 0.00001) // to avoid the division by zero
     let lightnessScale = 1.0 - Math.pow(1.0 - Math.pow(1.0 - lightness, q), 1.0 / q)
 
     let gravity = 120.0
@@ -181,24 +174,24 @@ function updatePicker() {
 const blendfuns = { // returns [r,g,b]
     normal(rgbfuns, clLuv, crLuv, t) {
         let [ll, lu, lv] = [0,1,2].map(it=>lerp(clLuv[it], crLuv[it], t))
-        let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, ll, lu, lv)
+        let [lx, ly, lz] = Lch.labToXyz(rgbfuns, ll, lu, lv)
         return rgbfuns.fromXYZ(lx, ly, lz)
     },
     multiply(rgbfuns, clLuv, crLuv, t) {
-        let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, clLuv[0], clLuv[1], clLuv[2])
+        let [lx, ly, lz] = Lch.labToXyz(rgbfuns, clLuv[0], clLuv[1], clLuv[2])
         let lrgb = rgbfuns.fromXYZ(lx, ly, lz)
 
-        let [rx, ry, rz] = Lch.luvToXyz(rgbfuns, crLuv[0], crLuv[1], crLuv[2])
+        let [rx, ry, rz] = Lch.labToXyz(rgbfuns, crLuv[0], crLuv[1], crLuv[2])
         let rrgb = rgbfuns.fromXYZ(rx, ry, rz)
         let lrrgb = [0,1,2].map(it=>lrgb[it]*rrgb[it])
 
         return [0,1,2].map(it=>lerp(lrgb[it], lrrgb[it], t))
     },
     screen(rgbfuns, clLuv, crLuv, t) {
-        let [lx, ly, lz] = Lch.luvToXyz(rgbfuns, clLuv[0], clLuv[1], clLuv[2])
+        let [lx, ly, lz] = Lch.labToXyz(rgbfuns, clLuv[0], clLuv[1], clLuv[2])
         let lrgb = rgbfuns.fromXYZ(lx, ly, lz)
 
-        let [rx, ry, rz] = Lch.luvToXyz(rgbfuns, crLuv[0], crLuv[1], crLuv[2])
+        let [rx, ry, rz] = Lch.labToXyz(rgbfuns, crLuv[0], crLuv[1], crLuv[2])
         let rrgb = rgbfuns.fromXYZ(rx, ry, rz)
         let lrrgb = [0,1,2].map(it=>1.0-(1.0-lrgb[it])*(1.0-rrgb[it]))
 
@@ -213,7 +206,7 @@ function lerp(X, Y, t) {
 
 function lerpWithAmbLuv(rgbfuns, clLuv, t) {
     let [crx, cry, crz] = rgbfuns.toXYZ(ambcol[0], ambcol[1], ambcol[2])
-    let crLuv = Lch.xyzToLvu(rgbfuns, crx, cry, crz)
+    let crLuv = Lch.xyzToLab(rgbfuns, crx, cry, crz)
 
     return blendfuns[ambBlend](rgbfuns, clLuv, crLuv, t)
 }
