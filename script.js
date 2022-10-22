@@ -150,7 +150,7 @@ function updatePicker() {
     // console.log("let eigen =", eigen)
 
     _calculatedEigen = eigen.cpy()
-    let lightnessScale = 1.0 - (cy / 299.0)
+    let lightnessScale = 1.0 - transformAmbMix(cy / 299.0)
     let newLightness = eigen.l * lightnessScale
     let saturation = eigen.s * lightnessScale // uniform Saturation is obtained by transforming the Chroma with a proper function relative to the lightness
     let newEigen = new Hsl(eigen.h, saturation, newLightness)
@@ -264,15 +264,15 @@ function updateGradview() {
                     ${255.0 * gradMap[y][x-1][1]},
                     ${255.0 * gradMap[y][x-1][2]}
                 )`
-                const x1 = transformAmbMix2((x-1) / xMaxSteps) * 300 - 1
-                const y1 = (y-1)*ySteps
-                const x2 = (transformAmbMix2(x / xMaxSteps) - transformAmbMix2((x-1) / xMaxSteps)) * 300 + 1
-                const y2 = y*ySteps
+                const x1 = transformAmbMix2((x-1) / xMaxSteps) * 300
+                const y1 = transformAmbMix2((y-1) / yMaxSteps) * 300
+                const x2 = transformAmbMix2(x / xMaxSteps) * 300
+                const y2 = transformAmbMix2(y / yMaxSteps) * 300
                 const vgrad = ctx.createLinearGradient(0,y1,0,y2)
                 vgrad.addColorStop(0.0, fill1)
                 vgrad.addColorStop(1.0, fill2)
                 ctx.fillStyle = vgrad
-                ctx.fillRect(x1,y1,x2,y2)
+                ctx.fillRect(x1-1,y1-1,x2-x1+1,y2-y1+1)
             }
         }
     }
