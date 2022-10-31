@@ -252,9 +252,10 @@ let gradRect = document.getElementById("gradview").getBoundingClientRect()
 
 const updater = (event) => {
     if (event.buttons) {
+        const scroll = window.pageYOffset
         let newRect = event.target.getBoundingClientRect()
         if (newRect.width == 300 && newRect.height == 300) gradRect = newRect // wtf html?
-        const [mx, my] = [event.clientX - gradRect.x, event.clientY - gradRect.y]
+        const [mx, my] = [event.clientX - gradRect.x, event.clientY - gradRect.y + scroll]
         cx = mx.coerceIn(0,299)
         cy = my.coerceIn(0,299)
         updatePicker()
